@@ -1,0 +1,2 @@
+content-visibility-parent hidden: false
+content-visibility-child hidden: true

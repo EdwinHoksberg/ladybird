@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<style>
+    .content-visibility-parent {
+        content-visibility: hidden;
+    }
+</style>
+
+<div class="content-visibility-parent">
+    <div class="content-visibility-child"></div>
+</div>
+
+<script src="../include.js"></script>
+<script>
+    asyncTest(done => {
+        const contentVisibilityParent = document.querySelector('.content-visibility-parent');
+        println("content-visibility-parent hidden: " + contentVisibilityParent.checkVisibility())
+
+        const contentVisibilityChild = document.querySelector('.content-visibility-child');
+        println("content-visibility-child hidden: " + contentVisibilityChild.checkVisibility())
+
+        done();
+    });
+</script>
