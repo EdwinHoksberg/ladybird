@@ -76,7 +76,7 @@ WebIDL::ExceptionOr<GC::Ref<WebIDL::Promise>> Serial::request_port(SerialPortReq
     }
 
     // 5. Run the following steps in parallel
-    Platform::EventLoopPlugin::the().deferred_invoke(GC::create_function(realm.heap(), [&realm, &relevant_global_object, promise, options]() -> void {
+    Platform::EventLoopPlugin::the().deferred_invoke(GC::create_function(realm.heap(), [this, &realm, &relevant_global_object, promise, options]() -> void {
         HTML::TemporaryExecutionContext context(realm, HTML::TemporaryExecutionContext::CallbacksEnabled::Yes);
 
         // 1. Let allPorts be an empty list.
@@ -120,6 +120,8 @@ WebIDL::ExceptionOr<GC::Ref<WebIDL::Promise>> Serial::request_port(SerialPortReq
         // 6. Let port be a SerialPort representing the port chosen by the user.
         auto port = selected_port.value();
 
+        m_available_ports.append(port);
+
         // 7. Queue a global task on the relevant global object of this using the serial port task source to resolve promise with port.
         queue_global_task(HTML::Task::Source::SerialPort, realm.global_object(), GC::create_function(realm.heap(), [&realm, promise, port]() {
             HTML::TemporaryExecutionContext context(realm);
@@ -136,24 +138,43 @@ GC::Ref<WebIDL::Promise> Serial::get_ports()
 {
     auto& realm = this->realm();
 
-    // FIXME: 1. Let promise be a new promise.
+    // 1. Let promise be a new promise.
+    auto promise = WebIDL::create_promise(realm);
 
-    // FIXME: 2. If this's relevant global object's associated Document is not allowed to use the policy-controlled feature named "serial",
-    //         reject promise with a "SecurityError" DOMException and return promise.
-
-    // FIXME: 3. Run the following steps in parallel:
-    {
-        // FIXME: 1. Let availablePorts be the sequence of available serial ports which the user has allowed the site to
-        //           access as the result of a previous call to requestPort().
-
-        // FIXME: 2. Let ports be the sequence of the SerialPorts representing the ports in availablePorts.
-
-        // FIXME: 3. Queue a global task on the relevant global object of this using the serial port task source to resolve promise with ports.
+    // 2. If this's relevant global object's associated Document is not allowed to use the policy-controlled feature named "serial",
+    //    reject promise with a "SecurityError" DOMException and return promise.
+    if (!as<HTML::Window>(HTML::relevant_global_object(*this)).document()->is_allowed_to_use_feature(DOM::PolicyControlledFeature::WebSerial)) {
+        return WebIDL::create_rejected_promise(realm, WebIDL::SecurityError::create(realm, "Failed to execute 'requestPort' on 'Serial': WebSerial feature is not enabled."_string));
     }
 
+    // 3. Run the following steps in parallel:
+    Platform::EventLoopPlugin::the().deferred_invoke(GC::create_function(realm.heap(), [this, &realm, promise]() -> void {
+        HTML::TemporaryExecutionContext context(realm, HTML::TemporaryExecutionContext::CallbacksEnabled::Yes);
+
+        // 1. Let availablePorts be the sequence of available serial ports which the user has allowed the site to
+        //    access as the result of a previous call to requestPort().
+        auto const& available_ports = m_available_ports;
+
+        // 2. Let ports be the sequence of the SerialPorts representing the ports in availablePorts.
+        auto const& ports = JS::Array::create_from<GC::Ref<SerialPort>>(realm, available_ports.span(), [&](auto const& port) -> JS::Value {
+            return JS::Object::create(realm, port);
+        });
+
+        // 3. Queue a global task on the relevant global object of this using the serial port task source to resolve promise with ports.
+        queue_global_task(HTML::Task::Source::SerialPort, realm.global_object(), GC::create_function(realm.heap(), [&realm, promise, ports]() {
+            HTML::TemporaryExecutionContext context(realm);
+            WebIDL::resolve_promise(realm, promise, move(ports));
+        }));
+    }));
+
     // 4. Return promise.
-    dbgln("FIXME: Unimplemented Serial::get_ports()");
-    return WebIDL::create_rejected_promise(realm, WebIDL::UnknownError::create(realm, ""_string));
+    return promise;
+}
+
+void Serial::visit_edges(Cell::Visitor& visitor)
+{
+    Base::visit_edges(visitor);
+    visitor.visit(m_available_ports);
 }
 
 // https://wicg.github.io/serial/#onconnect-attribute

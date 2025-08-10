@@ -43,10 +43,15 @@ public:
     void set_ondisconnect(WebIDL::CallbackType*);
     WebIDL::CallbackType* ondisconnect();
 
+protected:
+    virtual void visit_edges(Cell::Visitor&) override;
+
 private:
     explicit Serial(JS::Realm&);
 
     virtual void initialize(JS::Realm&) override;
+
+    Vector<GC::Ref<SerialPort>> m_available_ports;
 };
 
 }
