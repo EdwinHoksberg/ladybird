@@ -18,11 +18,11 @@ namespace Web::Serial {
 
 // https://wicg.github.io/serial/#serialoptions-dictionary
 struct SerialOptions {
-    Optional<WebIDL::UnsignedLong> baud_rate = {};
+    WebIDL::UnsignedLong baud_rate = {};
     Optional<WebIDL::Octet> data_bits = 8;
     Optional<WebIDL::Octet> stop_bits = 1;
     Optional<Bindings::ParityType> parity = Bindings::ParityType::None;
-    Optional<WebIDL::UnsignedLong> buffer_size = 255;
+    Optional<WebIDL::Double> buffer_size = 255;
     Optional<Bindings::FlowControlType> flow_control = Bindings::FlowControlType::None;
 };
 
@@ -67,7 +67,7 @@ class SerialPort : public DOM::EventTarget {
     // https://wicg.github.io/serial/#getinfo-method
     SerialPortInfo get_info() const;
     // https://wicg.github.io/serial/#open-method
-    GC::Ref<WebIDL::Promise> open(SerialOptions);
+    GC::Ref<WebIDL::Promise> open(SerialOptions const&);
     // https://wicg.github.io/serial/#setsignals-method
     GC::Ref<WebIDL::Promise> set_signals(SerialOutputSignals = {});
     // https://wicg.github.io/serial/#getsignals-method
@@ -80,9 +80,9 @@ class SerialPort : public DOM::EventTarget {
     // https://wicg.github.io/serial/#connected-attribute
     bool connected() const { return m_connected; }
     // https://wicg.github.io/serial/#readable-attribute
-    GC::Ref<Streams::ReadableStream> readable() { return *m_readable; }
+    [[nodiscard]] GC::Ptr<Streams::ReadableStream> readable();
     // https://wicg.github.io/serial/#writable-attribute
-    GC::Ref<Streams::WritableStream> writable() { return *m_writable; }
+    [[nodiscard]] GC::Ptr<Streams::WritableStream> writable();
 
     // https://wicg.github.io/serial/#onconnect-attribute-0
     void set_onconnect(WebIDL::CallbackType*);
@@ -101,6 +101,7 @@ private:
     virtual void initialize(JS::Realm&) override;
 
     serial_cpp::PortInfo m_device;
+    std::unique_ptr<serial_cpp::Serial> m_port = {};
 
     // https://wicg.github.io/serial/#dfn-state
     // Tracks the active state of the SerialPort
@@ -108,7 +109,7 @@ private:
 
     // https://wicg.github.io/serial/#dfn-buffersize
     // The amount of data to buffer for transmit and receive
-    unsigned long m_buffer_size = {};
+    double m_buffer_size = {};
 
     // https://wicg.github.io/serial/#dfn-connected
     // A flag indicating the logical connection state of serial port

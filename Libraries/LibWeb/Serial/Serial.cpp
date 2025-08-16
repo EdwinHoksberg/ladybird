@@ -153,7 +153,7 @@ GC::Ref<WebIDL::Promise> Serial::get_ports()
 
     // 4. Return promise.
     dbgln("FIXME: Unimplemented Serial::get_ports()");
-    return WebIDL::create_rejected_promise(realm, WebIDL::UnknownError::create(realm, Utf16String {}));
+    return WebIDL::create_resolved_promise(realm, JS::Array::create(realm, 0).value());
 }
 
 // https://wicg.github.io/serial/#onconnect-attribute
